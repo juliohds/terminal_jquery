@@ -1,0 +1,228 @@
+<script src="https://code.jquery.com/jquery-latest.js"></script>
+
+<script src="./node_modules/jquery.terminal/js/jquery.terminal.min.js"></script>
+
+<script src="./node_modules/jquery.terminal/js/jquery.mousewheel-min.js"></script>
+
+<link href="./node_modules/jquery.terminal/css/jquery.terminal.min.css" rel="stylesheet" />
+
+<body>
+    <div id="terminal">
+    </div>
+</body>
+<script src="./node_modules/jquery.terminal/js/star_wars.js"></script>
+<script>
+    jQuery(function ($) {
+
+        var firstAcess = true;
+        var frames = [];
+        var LINES_PER_FRAME = 14;
+        var DELAY = 67;
+        //star_wars is array of lines from 'js/star_wars.js'
+        var lines = star_wars.length;
+        for (var i = 0; i < lines; i += LINES_PER_FRAME) {
+            frames.push(star_wars.slice(i, i + LINES_PER_FRAME));
+        }
+        var stop = false;
+        //to show greetings after clearing the terminal
+        function play(term, delay) {
+            var i = 0;
+            var next_delay;
+            if (delay == undefined) {
+                delay = DELAY;
+            }
+            function display() {
+                if (i == frames.length) {
+                    i = 0;
+                }
+                term.clear();
+                if (frames[i][0].match(/[0-9]+/)) {
+                    next_delay = frames[i][0] * delay;
+                } else {
+                    next_delay = delay;
+                }
+                term.echo(frames[i++].slice(1).join('\n') + '\n');
+                if (!stop) {
+                    setTimeout(display, next_delay);
+                } else {
+                    term.clear();
+                    options(term)
+                    i = 0;
+                }
+            }
+            display();
+        }
+
+        function goProgress(term) {
+            var i = 0, size = 100;
+            prompt = term.get_prompt();
+            string = progress(0, size);
+            term.set_prompt(progress);
+            animation = true;
+            (function loop() {
+                string = progress(i++, size);
+                term.set_prompt(string);
+                if (i < 100) {
+                    timer = setTimeout(loop, 100);
+                } else {
+                    term.echo(progress(i, size) + ' [[b;green;]OK]')
+                        .set_prompt(prompt);
+                    animation = false
+                }
+            })();
+        }
+
+        var anim = false;
+        function typed(finish_typing) {
+            return function (term, message, delay, finish) {
+                anim = true;
+                var prompt = term.get_prompt();
+                var c = 0;
+                if (message.length > 0) {
+                    term.set_prompt('');
+                    var new_prompt = '';
+                    var interval = setInterval(function () {
+                        var chr = $.terminal.substring(message, c, c + 1);
+                        new_prompt += chr;
+                        term.set_prompt(new_prompt);
+                        c++;
+                        if (c == length(message)) {
+                            clearInterval(interval);
+                            // execute in next interval
+                            setTimeout(function () {
+                                // swap command with prompt
+                                finish_typing(term, message, prompt);
+                                anim = false
+                                finish && finish();
+                            }, delay);
+                        }
+                    }, delay);
+                }
+            };
+        }
+        function length(string) {
+            string = $.terminal.strip(string);
+            return $('<span>' + string + '</span>').text().length;
+        }
+        var typed_prompt = typed(function (term, message, prompt) {
+            term.set_prompt(message + ' ');
+        });
+        var typed_message = typed(function (term, message, prompt) {
+            term.echo(message)
+            term.set_prompt(prompt);
+        });
+
+        function curriculo(term) {
+
+        }
+
+        function contatos(term) {
+            term.echo(' ');
+            term.echo('===========================');
+            term.echo(' ');
+            term.echo('Email:');
+            term.echo('tecjuliohenrique@gmail.com');
+            term.echo('Linkedin:');
+            term.echo('https://www.linkedin.com/in/juliohds/');
+            term.echo('Github:');
+            term.echo('https://github.com/juliohds');
+            term.echo('Facebook:');
+            term.echo('https://www.facebook.com/julio.henrique.754');
+            term.echo(' ');
+            term.echo('===========================');
+            options(term);
+        }
+        
+        function options(term) {
+
+            term.echo('   ');
+            term.echo(' Escolha uma das opções: ');
+            term.echo('[0] Curriculo');
+            term.echo('[1] Contato');
+            term.echo('[2] Star Wars Animation - CTL+D to STOP');
+            term.echo('[3] Exit');
+            term.set_prompt('> ');
+        }
+
+        function init(term) {
+            term.clear();
+            if (firstAcess) {
+                var msg = "Bem vindo ao meu terminal";
+                typed_message(term, msg, 200, function () {
+                    typed_prompt(term, "Qual é seu nome:", 100);
+                });
+            }
+        }
+
+        function progress(percent, width) {
+            var size = Math.round(width * percent / 100);
+            var left = '', taken = '', i;
+            for (i = size; i--;) {
+                taken += '=';
+            }
+            if (taken.length > 0) {
+                taken = taken.replace(/=$/, '>');
+            }
+            for (i = width - size; i--;) {
+                left += ' ';
+            }
+            return '[' + taken + left + '] ' + percent + '%';
+        }
+        var animation = false;
+        var timer;
+        var prompt;
+        var string;
+
+        $('#terminal').terminal(function (command, term) {
+
+            var cmd = $.terminal.parse_command(command);
+            var finish = false;
+
+            if (firstAcess) {
+                term.echo('Bem vindo '+cmd.name+ '!');
+                term.set_prompt('> ');
+                firstAcess = false;
+                options(term);
+            }
+            
+            if (command == '2') {
+                term.pause();
+                stop = false;
+                play(term);
+            }
+
+            if (cmd.name == '0') {
+                curriculo(term)
+            }
+
+            if (cmd.name == '1') {
+                contatos(term)
+            }
+
+            if (cmd.name == '3') {
+                term.echo('bye');
+            }
+
+        }, {
+                onInit: function (term) {
+                    init(term);
+                },
+                keydown: function (e, term) {
+
+                    if (e.which == 68 && e.ctrlKey) {
+                        stop = true;
+                        term.resume();
+                        return false;
+                    }
+
+                    if (anim) {
+                        return false;
+                    }
+                },
+                width: 600,
+                height: 480,
+                prompt: '>', greeting: false
+            });
+    });
+
+</script>
